@@ -20,15 +20,13 @@ module.exports = {
   getById,
   create,
   update,
-  delete: _delete,
-  activateAccount,
-  deactivateAccount
+  delete: _delete
 };
 
 async function authenticate({ email, password, ipAddress }) {
   const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
-  if (!account || !account.isVerified || !account.isActive || !(await bcrypt.compare(password, account.passwordHash))) {
+  if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash))) {
     throw 'Email or password is incorrect';
   }
 
@@ -93,18 +91,30 @@ async function sendVerificationEmail(account, origin) {
 
 
 async function register(params, origin) {
-  if (await db.Account.findOne({ where: { email: params.email } })) {
-    return await sendAlreadyRegisteredEmail(params.email, origin);
-  }
+    // Check if email already exists
+    if (await db.Account.findOne({ where: { email: params.email } })) {
+        return await sendAlreadyRegisteredEmail(params.email, origin);
+    }
 
-  const account = new db.Account(params);
-  const isFirstAccount = (await db.Account.count()) === 0;
-  account.role = isFirstAccount ? Role.Admin : Role.User;
-  account.verificationToken = randomTokenString();
-  account.passwordHash = await hash(params.password);
+    const account = new db.Account(params);
+    
+    // Set role (first account = admin, others = user)
+    const isFirstAccount = (await db.Account.count()) === 0;
+    account.role = isFirstAccount ? Role.Admin : Role.User;
+    
+    // Set password hash
+    account.passwordHash = await hash(params.password);
+    
+    // Auto-verify the account
+    account.verified = Date.now();
+    account.verificationToken = null;
+    
+    await account.save();
 
-  await account.save();
-  await sendVerificationEmail(account, origin);
+    return {
+        ...basicDetails(account),
+        message: 'Registration successful, you can now login'
+    };
 }
 
 async function verifyEmail({ token }) {
@@ -219,8 +229,8 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-  const { id, email, firstName, lastName, role, created, updated, isVerified, isActive } = account;
-  return { id, email, firstName, lastName, role, created, updated, isVerified, isActive };
+  const { id, email, firstName, lastName, role, created, updated, isVerified } = account;
+  return { id, email, firstName, lastName, role, created, updated, isVerified };
 }
 
 async function sendVerificationEmail(account, origin) {
@@ -277,18 +287,4 @@ async function sendPasswordResetEmail(account, origin){
     html: `<h4>Reset Password Email</h4>
            ${message}`
   });
-}
-
-async function activateAccount(id) {
-  const account = await getAccount(id);
-  account.isActive = true;
-  await account.save();
-  return basicDetails(account);
-}
-
-async function deactivateAccount(id) {
-  const account = await getAccount(id);
-  account.isActive = false;
-  await account.save();
-  return basicDetails(account);
 }
