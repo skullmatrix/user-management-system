@@ -20,13 +20,15 @@ module.exports = {
   getById,
   create,
   update,
-  delete: _delete
+  delete: _delete,
+  activateAccount,
+  deactivateAccount
 };
 
 async function authenticate({ email, password, ipAddress }) {
   const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
-  if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash))) {
+  if (!account || !account.isVerified || !account.isActive || !(await bcrypt.compare(password, account.passwordHash))) {
     throw 'Email or password is incorrect';
   }
 
@@ -217,8 +219,8 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-  const { id, email, firstName, lastName, role, created, updated, isVerified } = account;
-  return { id, email, firstName, lastName, role, created, updated, isVerified };
+  const { id, email, firstName, lastName, role, created, updated, isVerified, isActive } = account;
+  return { id, email, firstName, lastName, role, created, updated, isVerified, isActive };
 }
 
 async function sendVerificationEmail(account, origin) {
@@ -275,4 +277,18 @@ async function sendPasswordResetEmail(account, origin){
     html: `<h4>Reset Password Email</h4>
            ${message}`
   });
+}
+
+async function activateAccount(id) {
+  const account = await getAccount(id);
+  account.isActive = true;
+  await account.save();
+  return basicDetails(account);
+}
+
+async function deactivateAccount(id) {
+  const account = await getAccount(id);
+  account.isActive = false;
+  await account.save();
+  return basicDetails(account);
 }
