@@ -19,6 +19,7 @@ router.get('/', authorize(Role.Admin), getAll);
 router.get('/:id', authorize(), getById);
 router.post('/', authorize(Role.Admin), createSchema, create);
 router.put('/:id', authorize(), updateSchema, update);
+router.put('/:id/toggle-activation', authorize(Role.Admin), toggleActivation);
 router.delete('/:id', authorize(), _delete);
 
 module.exports = router;
@@ -227,6 +228,12 @@ function _delete(req, res, next) {
   accountService.delete(req.params.id)
       .then(() => res.json({ message: 'Account deleted successfully' }))
       .catch(next);
+}
+
+function toggleActivation(req, res, next) {
+    accountService.toggleActivation(req.params.id)
+        .then(account => res.json(account))
+        .catch(next);
 }
 
 // helper functions

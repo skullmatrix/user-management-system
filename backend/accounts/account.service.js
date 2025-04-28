@@ -20,7 +20,8 @@ module.exports = {
   getById,
   create,
   update,
-  delete: _delete
+  delete: _delete,
+  toggleActivation
 };
 
 async function authenticate({ email, password, ipAddress }) {
@@ -287,4 +288,17 @@ async function sendPasswordResetEmail(account, origin){
     html: `<h4>Reset Password Email</h4>
            ${message}`
   });
+}
+
+async function toggleActivation(id) {
+    const account = await getAccount(id);
+    // Prevent deactivating first account (admin)
+    const isFirstAccount = (await db.Account.count()) === 1;
+    if (isFirstAccount && account.id === 1) {
+        throw 'First admin account cannot be deactivated';
+    }
+    
+    account.active = !account.active;
+    await account.save();
+    return basicDetails(account);
 }

@@ -100,6 +100,10 @@ export class AccountService {
       }));
   }
 
+  toggleActivation(id: string) {
+    return this.http.put<any>(`${environment.apiUrl}/accounts/${id}/toggle-activation`, {});
+  }
+
   private refreshTokenTimeout: any;
 
   private startRefreshTokenTimer() {
