@@ -1,6 +1,6 @@
 # INTPROG FINAL
 
-planas: user-management-system-kbjerodds-skullmatrixs-projects.vercel.app
+planas: https://user-management-system-kbjerodds-skullmatrixs-projects.vercel.app/#/account/login?returnUrl=%2F
 
 
 
