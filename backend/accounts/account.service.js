@@ -105,51 +105,28 @@ async function register(params, origin) {
     // first registered account is an admin
     const isFirstAccount = (await db.Account.count()) === 0;
     account.role = isFirstAccount ? Role.Admin : Role.User;
-    account.status = 'Active'; // Set initial status
-
-    // generate verification token
-    account.verificationToken = randomTokenString();
+    
+    // Auto-verify the email and set status to Active
+    account.verified = Date.now();
+    account.status = Status.Active; // Set status to Active for all accounts
     
     // hash password
     account.passwordHash = await hash(params.password);
-
+    
     // save account
     await account.save();
-
-    // send email
-    if (!isFirstAccount) {
-        await sendVerificationEmail(account, origin);
-    } else {
-        account.verified = Date.now();
-        account.verificationToken = null;
-        await account.save();
-    }
 
     return basicDetails(account);
 }
 
 async function verifyEmail({ token }) {
-    if (!token) throw 'Token is required';
-
-    const account = await db.Account.findOne({ 
-        where: { 
-            verificationToken: token,
-            verified: null 
-        } 
-    });
+    const account = await db.Account.findOne({ where: { verificationToken: token } });
 
     if (!account) throw 'Verification failed';
 
     account.verified = Date.now();
     account.verificationToken = null;
-    account.status = 'Active';
-    
     await account.save();
-
-    return {
-        message: 'Verification successful, you can now login',
-        ...basicDetails(account)
-    };
 }
 
 async function forgotPassword({ email }, origin) {
