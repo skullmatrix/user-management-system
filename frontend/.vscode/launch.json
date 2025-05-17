@@ -7,7 +7,7 @@
       "type": "chrome",
       "request": "launch",
       "preLaunchTask": "npm: start",
-      "url": "https://planas-fullstack-user-management.onrender.com"
+      "url": "https://user-management-system-979j.onrender.com"
     },
     {
       "name": "ng test",
