@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'https://user-management-system-03-84zd.onrender.com'
+  apiUrl: 'https://user-management-system-979j.onrender.com'
 };
 
 /*

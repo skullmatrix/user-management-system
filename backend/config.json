@@ -2,9 +2,9 @@
     
     "database": {
         "host": "153.92.15.31",
-        "user": "u875409848_go",
+        "user": "u875409848_hagupar",
         "password": "9T2Z5$3UKkgSYzE",
-        "database": "u875409848_go"
+        "database": "u875409848_hagupar"
     },
     "secret": "supersecretcode",
     "emailFrom": "info@node-mysql-signup-verification-api.com",
