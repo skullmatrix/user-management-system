@@ -105,17 +105,16 @@ async function register(params, origin) {
     // first registered account is an admin
     const isFirstAccount = (await db.Account.count()) === 0;
     account.role = isFirstAccount ? Role.Admin : Role.User;
-    account.verificationToken = randomTokenString();
-
-    account.status = isFirstAccount ? Status.Active : Status.InActive;
+    
+    // Auto-verify the email and set status to Active
+    account.verified = Date.now();
+    account.status = Status.Active; // Set status to Active for all accounts
     
     // hash password
     account.passwordHash = await hash(params.password);
+    
     // save account
     await account.save();
-
-    // send email
-    // await sendVerificationEmail(account, origin);
 
     return basicDetails(account);
 }
