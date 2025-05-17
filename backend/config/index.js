@@ -8,7 +8,7 @@ module.exports = {
         password: "9T2Z5$3UKkgSYzE",
         database: "u875409848_go"
     },
-    secret: "supersecretcode",
+    secret: "terces",
     emailFrom: "info@node-mysql-signup-verification-api.com",
     smtpOptions: {
         host: "smtp.ethereal.email",
