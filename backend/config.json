@@ -1,19 +1,20 @@
 {
+    
     "database": {
-        "host": "localhost",
-        "port": 3306,
-        "user": "root",
-        "password": "",
-        "database": "node-mysql-signup-verification-api"
+        "host": "153.92.15.31",
+        "user": "u875409848_go",
+        "password": "9T2Z5$3UKkgSYzE",
+        "database": "u875409848_go"
     },
-    "secret": "THIS IS USED TO SIGN AND VERIFY JWT TOKENS, REPLACE IT WITH YOUR OWN SECRET, IT CAN BE ANY STRING",
+    "secret": "supersecretcode",
     "emailFrom": "info@node-mysql-signup-verification-api.com",
-    "snrpOptions": {
-        "host": "[ENTER YOUR OWN SNTP OPTIONS OR CREATE FREE TEST ACCOUNT IN ONE CLICK AT https://ethereal.email/]",
+    "smtpOptions": {
+        "host": "smtp.ethereal.email",
         "port": 587,
+        "secure": false,
         "auth": {
-            "user": "",
-            "pass": ""
+            "user": "emery40@ethereal.email",
+            "pass": "v9uHXmz8zzpSbRNtKb"
         }
     }
 }

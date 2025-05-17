@@ -1,11 +1,12 @@
-const config = require('config.json');
+﻿﻿const config = require('../config');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+const crypto = require("crypto");
 const { Op } = require('sequelize');
 const sendEmail = require('_helpers/send-email');
 const db = require('_helpers/db');
 const Role = require('_helpers/role');
+const Status = require('_helpers/status');
 
 module.exports = {
     authenticate,
@@ -26,8 +27,22 @@ module.exports = {
 async function authenticate({ email, password, ipAddress }) {
     const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
-    if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash))) {
-        throw 'Email or password is incorrect';
+    if (!account) {
+        throw 'Email does not exist';
+    }
+
+    if (!(await bcrypt.compare(password, account.passwordHash))) {
+        throw 'Password is incorrect';
+    }
+
+    if (account.id !== 1) {
+        if (!account.isVerified) {
+            throw 'Email is not verified';
+        }
+    
+        if (!account || account.status !== 'Active') {
+            throw 'Account is InActive. Please contact system administrator!';
+        }
     }
 
     // authentication successful so generate jwt and refresh tokens
@@ -53,7 +68,7 @@ async function refreshToken({ token, ipAddress }) {
     const newRefreshToken = generateRefreshToken(account, ipAddress);
     refreshToken.revoked = Date.now();
     refreshToken.revokedByIp = ipAddress;
-    refreshToken.replaceByToken = newRefreshToken.token;
+    refreshToken.replacedByToken = newRefreshToken.token;
     await refreshToken.save();
     await newRefreshToken.save();
 
@@ -68,18 +83,18 @@ async function refreshToken({ token, ipAddress }) {
     };
 }
 
-async function revokeToken({token, ipAddress }) {
+async function revokeToken({ token, ipAddress }) {
     const refreshToken = await getRefreshToken(token);
-   
+
     // revoke token and save
     refreshToken.revoked = Date.now();
-    refreshToken.revokedByIP = ipAddress;
+    refreshToken.revokedByIp = ipAddress;
     await refreshToken.save();
 }
 
 async function register(params, origin) {
     // validate
-    if (await db.Account.findOne({ where: { email: params.email } }) ) {
+    if (await db.Account.findOne({ where: { email: params.email } })) {
         // send already registered error in email to prevent account enumeration
         return await sendAlreadyRegisteredEmail(params.email, origin);
     }
@@ -90,8 +105,11 @@ async function register(params, origin) {
     // first registered account is an admin
     const isFirstAccount = (await db.Account.count()) === 0;
     account.role = isFirstAccount ? Role.Admin : Role.User;
-    account.verificationToken = randomTokenString();
+    account.status = 'Active'; // Set initial status
 
+    // generate verification token
+    account.verificationToken = randomTokenString();
+    
     // hash password
     account.passwordHash = await hash(params.password);
 
@@ -99,17 +117,39 @@ async function register(params, origin) {
     await account.save();
 
     // send email
-    await sendVerificationEmail(account, origin);
+    if (!isFirstAccount) {
+        await sendVerificationEmail(account, origin);
+    } else {
+        account.verified = Date.now();
+        account.verificationToken = null;
+        await account.save();
+    }
+
+    return basicDetails(account);
 }
 
 async function verifyEmail({ token }) {
-    const account = await db.Account.findOne({ where: { verificationToken: token } });
+    if (!token) throw 'Token is required';
+
+    const account = await db.Account.findOne({ 
+        where: { 
+            verificationToken: token,
+            verified: null 
+        } 
+    });
 
     if (!account) throw 'Verification failed';
 
     account.verified = Date.now();
     account.verificationToken = null;
+    account.status = 'Active';
+    
     await account.save();
+
+    return {
+        message: 'Verification successful, you can now login',
+        ...basicDetails(account)
+    };
 }
 
 async function forgotPassword({ email }, origin) {
@@ -162,10 +202,10 @@ async function getById(id) {
 
 async function create(params) {
     // validate
-    if (await db.Account.findOne({ where: { email: params.email } }) ) {
+    if (await db.Account.findOne({ where: { email: params.email } })) {
         throw 'Email "' + params.email + '" is already registered';
     }
-
+    
     const account = new db.Account(params);
     account.verified = Date.now();
 
@@ -183,7 +223,7 @@ async function update(id, params) {
 
     // validate (if email was changed)
     if (params.email && account.email !== params.email && await db.Account.findOne({ where: { email: params.email } })) {
-        throw 'Email "' + params.email + '" is already registered';
+        throw 'Email "' + params.email + '" is already taken';
     }
 
     // hash password if it was entered
@@ -207,7 +247,7 @@ async function _delete(id) {
 // helper functions
 
 async function getAccount(id) {
-    const account = await db.Account.findByPK(id);
+    const account = await db.Account.findByPk(id);
     if (!account) throw 'Account not found';
     return account;
 }
@@ -242,18 +282,18 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-    const { id, title, firstName, lastName, email, role, created, updated, isVerified } = account;
-    return { id, title, firstName, lastName, email, role, created, updated, isVerified };
+    const { id, title, firstName, lastName, email, role, created, updated, isVerified, verificationToken, status } = account;
+    return { id, title, firstName, lastName, email, role, created, updated, isVerified, verificationToken, status };
 }
 
 async function sendVerificationEmail(account, origin) {
     let message;
     if (origin) {
-        const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`
+        const verifyUrl = `${origin}/account/verify-email?token=${account.verificationToken}`;
         message = `<p>Please click the below link to verify your email address:</p>
                    <p><a href="${verifyUrl}">${verifyUrl}</a></p>`;
     } else {
-        message = `<p>Please use the below token to verify your email address with the <code>/account/verify-email</code> api routes:</p>
+        message = `<p>Please use the below token to verify your email address with the <code>/account/verify-email</code> api route:</p>
                    <p><code>${account.verificationToken}</code></p>`;
     }
 
@@ -269,11 +309,9 @@ async function sendVerificationEmail(account, origin) {
 async function sendAlreadyRegisteredEmail(email, origin) {
     let message;
     if (origin) {
-        message = `
-        <p>If you don't know your password please visit the <a href="${origin}/account/forgot-password">forgot password</a> page.</p>`;
+        message = `<p>If you don't know your password please visit the <a href="${origin}/account/forgot-password">forgot password</a> page.</p>`;
     } else {
-        message = `
-        <p>If you don't know your password you can reset it via the <code>/account/forgot-password></code> api route.</p>`;
+        message = `<p>If you don't know your password you can reset it via the <code>/account/forgot-password</code> api route.</p>`;
     }
 
     await sendEmail({
@@ -290,7 +328,7 @@ async function sendPasswordResetEmail(account, origin) {
     if (origin) {
         const resetUrl = `${origin}/account/reset-password?token=${account.resetToken}`;
         message = `<p>Please click the below link to reset your password, the link will be valid for 1 day:</p>
-                   <p><a href="#$(resetUrl)">$(resetUrl</a></p>`;
+                   <p><a href="${resetUrl}">${resetUrl}</a></p>`;
     } else {
         message = `<p>Please use the below token to reset your password with the <code>/account/reset-password</code> api route:</p>
                    <p><code>${account.resetToken}</code></p>`;
@@ -302,4 +340,4 @@ async function sendPasswordResetEmail(account, origin) {
         html: `<h4>Reset Password Email</h4>
                ${message}`
     });
- }
+}
