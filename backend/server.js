@@ -1,5 +1,5 @@
-require('rootpath')();
-require('dotenv').config(); // Load environment variables
+﻿﻿require('rootpath')();
+require('dotenv').config();
 
 const express = require('express');
 const app = express();
@@ -8,38 +8,26 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('_middleware/error-handler');
 
-// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// Allow CORS requests from specified origins
-const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:4200'];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+// allow cors requests from any origin and with credentials
+app.use(cors({ origin: (origin, callback) => callback(null, true), credentials: true }));
 
-// API routes
+// api routes
 app.use('/accounts', require('./accounts/accounts.controller'));
+app.use('/employees', require('./employees/employees.controller'));
+app.use('/departments', require('./departments/departments.controller'));
+app.use('/workflows', require('./workflows/workflows.controller'));
+app.use('/requests', require('./requests/request.controller'));
 
-// Swagger docs route
+// swagger docs route
 app.use('/api-docs', require('_helpers/swagger'));
 
-// Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ message: 'API is running', status: 'healthy' });
-});
-
-// Global error handler
+// global error handler
 app.use(errorHandler);
 
-// Start server
-const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`Server listening on port ${port}`));
+// start server
+const port = process.env.NODE_ENV === 'production' ? (process.env.PORT || 80) : 4000;
+app.listen(port, () => console.log('http://localhost:' + port));
