@@ -1,0 +1,20 @@
+{
+    
+    "database": {
+        "host": "153.92.15.31",
+        "user": "u875409848_tejares",
+        "password": "9T2Z5$3UKkgSYzE",
+        "database": "u875409848_tejares"
+    },
+    "secret": "supersecretcode",
+    "emailFrom": "info@node-mysql-signup-verification-api.com",
+    "smtpOptions": {
+        "host": "smtp.ethereal.email",
+        "port": 587,
+        "secure": false,
+        "auth": {
+            "user": "emery40@ethereal.email",
+            "pass": "v9uHXmz8zzpSbRNtKb"
+        }
+    }
+}
